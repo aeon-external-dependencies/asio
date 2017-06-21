@@ -2,7 +2,7 @@
 // detail/reactive_socket_service_base.ipp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -35,7 +35,7 @@ reactive_socket_service_base::reactive_socket_service_base(
   reactor_.init_task();
 }
 
-void reactive_socket_service_base::shutdown()
+void reactive_socket_service_base::base_shutdown()
 {
 }
 
@@ -119,6 +119,25 @@ asio::error_code reactive_socket_service_base::close(
   construct(impl);
 
   return ec;
+}
+
+socket_type reactive_socket_service_base::release(
+    reactive_socket_service_base::base_implementation_type& impl,
+    asio::error_code& ec)
+{
+  if (!is_open(impl))
+    return invalid_socket;
+
+  cancel(impl, ec);
+  if (ec)
+    return invalid_socket;
+
+  reactor_.deregister_descriptor(impl.socket_, impl.reactor_data_,
+      (impl.state_ & socket_ops::possible_dup) == 0);
+
+  socket_type tmp = impl.socket_;
+  impl.socket_ = invalid_socket;
+  return tmp;
 }
 
 asio::error_code reactive_socket_service_base::cancel(
